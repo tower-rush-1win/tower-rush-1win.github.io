@@ -1,0 +1,184 @@
+var s86839_tshvxw5a = "pwoq8uqr4k";
+
+var s61161_tshvxw5a = "qkjmz3r18po";
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Keep sub ids from the landing URL for 24h. The ref click usually happens later,
+  // from a child page whose URL no longer carries them, and the worker reads these
+  // cookies when it builds the affiliate URL. No Domain attribute on purpose: the
+  // cookie stays host-only, so subdomains and mirrors never inherit a sub id.
+  // Same cap and control-char rule as SUB_ID_MAX_LENGTH / hasControlChar in refSelection.js,
+  // which re-checks these values on read — a cookie is forgeable, so this is a first
+  // filter, not a trust boundary.
+  const SUB_ID_MAX_LENGTH = 255;
+  const hasControlChar = (value) => {
+    for (let i = 0; i < value.length; i += 1) {
+      const code = value.charCodeAt(i);
+      if (code < 32 || code === 127) return true;
+    }
+    return false;
+  };
+
+  const incomingSubIds = [];
+  for (const [key, value] of new URLSearchParams(window.location.search)) {
+    const name = key.toLowerCase();
+    if (!/^sub_id_\d+$/.test(name)) continue;
+    const clean = value.trim();
+    if (!clean || clean.length > SUB_ID_MAX_LENGTH || hasControlChar(clean)) continue;
+    incomingSubIds.push([name, clean]);
+  }
+  if (incomingSubIds.length > 0) {
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    const freshNames = new Set(incomingSubIds.map(([name]) => name));
+    for (const [name, value] of incomingSubIds) {
+      document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=86400; SameSite=Lax${secure}`;
+    }
+    // A fresh set replaces the previous one: keys from two different visits must not
+    // mix into a combination no campaign ever had.
+    for (const part of (document.cookie || '').split(';')) {
+      const name = part.split('=')[0].trim().toLowerCase();
+      if (/^sub_id_\d+$/.test(name) && !freshNames.has(name)) {
+        document.cookie = `${name}=; Path=/; Max-Age=0${secure}`;
+      }
+    }
+  }
+
+  const [buildId, _id = buildId.replace('build-', '').replace('build', '').toLowerCase()] = Object.keys(
+    document.body.dataset,
+  );
+  const refSelector = `[data-v-${_id}]`;
+
+  document.addEventListener(
+    'click',
+    function (e) {
+      if (e.button !== 0) return;
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      if (a.matches(refSelector)) return;
+      const hrefAttr = (a.getAttribute('href') || '').trim();
+      if (!hrefAttr || hrefAttr.toLowerCase().startsWith('javascript:')) return;
+      if (typeof window.umami?.track === 'function') {
+        window.umami.track('click_link', { href: a.href });
+      }
+    },
+    true,
+  );
+
+  const s61161_tshvxw5a = document.querySelectorAll(refSelector);
+
+  /* eslint-disable-next-line no-undef -- substituted at HTML build time */
+  const REF_PATH = "/jump";
+
+  const refPathBase = String(REF_PATH || '').replace(/\/+$/, '');
+
+  for (const el of s61161_tshvxw5a) {
+    el.addEventListener('click', function () {
+      const [url = ''] = Object.values(el.dataset);
+      // Always end targetUrl with a trailing slash so _worker does not issue a redirect
+      let targetUrl = refPathBase ? `${refPathBase}/` : '/';
+      if (url.length > 0) {
+        const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        targetUrl = refPathBase
+          ? `${refPathBase}/${encodeURIComponent(cleanUrl)}/`
+          : `/${encodeURIComponent(cleanUrl)}/`;
+      }
+
+      if (typeof window.umami?.track === 'function') {
+        window.umami.track('click_ref', { url, targetUrl });
+      }
+
+      window.open(targetUrl, '_blank');
+    });
+  }
+});
+
+// Full game block handler
+document.addEventListener('DOMContentLoaded', function () {
+  const promoPanel = document.querySelector('.promopanel');
+
+  if (promoPanel) {
+    promoPanel.style.display = 'none';
+    const showPoint = window.innerHeight * 0.5;
+
+    const handleScroll = () => {
+      promoPanel.style.display =
+        (window.pageYOffset || document.documentElement.scrollTop) >= showPoint ? 'block' : 'none';
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    const closeBtn = promoPanel.querySelector('.promopanel__close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        promoPanel.style.display = 'none';
+        window.removeEventListener('scroll', handleScroll);
+      });
+    }
+  }
+
+  const bgImg = document.querySelector('.bg-image');
+  if (bgImg && window.innerWidth < 768) {
+    bgImg.style.backgroundImage = `url('${bgImg.getAttribute('data-mobile-image')}')`;
+  }
+
+  const playBtn = document.querySelector('.play-btn');
+  if (!playBtn) return;
+
+  function handleDesktop() {
+    const bg = document.querySelector('.bg-image');
+    const iframeContainer = document.querySelector('.iframe');
+    const iframe = document.querySelector('.iframe-game');
+    const box = document.querySelector('.box');
+
+    if (!bg || !iframeContainer || !iframe || !box) {
+      openRefLink();
+      return;
+    }
+
+    bg.classList.add('hide');
+    box.classList.add('hide');
+    iframeContainer.classList.add('show');
+
+    const url = iframe.getAttribute('data-src');
+    if (url) iframe.setAttribute('src', url);
+  }
+
+  function openRefLink() {
+    const refBtn = document.querySelector('.btn-yellow');
+    if (!refBtn) return;
+    const hasRefAttr = Array.from(refBtn.attributes).some((a) => a.name.startsWith('data-v-'));
+    if (!hasRefAttr) return;
+
+    /* eslint-disable-next-line no-undef -- substituted at HTML build time */
+    const REF_PATH = "/jump";
+    const refPathBase = String(REF_PATH || '').replace(/\/+$/, '');
+    const targetUrl = refPathBase ? `${refPathBase}/` : '/';
+    window.open(targetUrl, '_blank');
+  }
+
+  function handleMobile() {
+    const modal = document.querySelector('.game-modal');
+    if (!modal) {
+      openRefLink();
+      return;
+    }
+
+    const iframe = modal.querySelector('iframe');
+    const url = iframe.getAttribute('data-src');
+    if (url) iframe.setAttribute('src', url);
+    modal.classList.add('active');
+  }
+
+  playBtn.addEventListener('click', () => (window.innerWidth <= 768 ? handleMobile() : handleDesktop()));
+
+  const closeBtn = document.querySelector('.close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const modal = document.querySelector('.game-modal');
+      const iframe = modal.querySelector('iframe');
+      modal.classList.remove('active');
+      iframe.setAttribute('src', '');
+    });
+  }
+});
